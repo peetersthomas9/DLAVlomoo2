@@ -122,7 +122,7 @@ class Detector(object):
                 bboxes = np.array([])
                 scores = np.array([])
                 classes = np.array([])
-                className = 'okay'
+                #className = 'okay'
                 detectPersonOfInterest = pd.Series(dtype='float64')
 
                 for i in range(detectPerson.shape[0]):
@@ -151,46 +151,36 @@ class Detector(object):
                         left_wrist = landmarks[self.mp_pose.PoseLandmark.LEFT_WRIST.value]
                         right_wrist = landmarks[self.mp_pose.PoseLandmark.RIGHT_WRIST.value]
 
-                        if results.right_hand_landmarks:
-                            right_hand = results.right_hand_landmarks.landmark
-                            handmarks=[]
-                            x,y,c = frame.shape
-                            
-                            for hm in right_hand:
-                                    # print(id, lm)
-                                    hmx = int(hm.x * x)
-                                    hmy = int(hm.y * y)
-                                    handmarks.append([hmx, hmy])
+                        
                             #print('handmarks', handmarks)
                                         # Drawing landmarks on frames
                             #mpDraw.draw_landmarks(bbox_array[:,:,0:3], right_hand, mpHands.HAND_CONNECTIONS)
-                            #print(img.shape)
-                            # Predict gesture in Hand Gesture Recognition project
-                            prediction = self.model_gesture.predict([handmarks])
-                            #print(prediction)
-                            classID = np.argmax(prediction)
-                            className = self.classNames[classID]
-                            print(className)
+                       
+                        #print('left_wrist',left_wrist.x)
+                        #print('right_wrist',right_wrist.x)
 
-                            if (left_wrist.y < left_shoulder.y) and (right_wrist.y < right_shoulder.y) and className == 'peace':
-                                detectPersonOfInterest = detectPerson.iloc[i,:] 
-                                print('detect')
-                                num_objects=1
-                                bboxes = np.zeros((1,4))
-                                scores = np.zeros(1)
-                                classes = np.zeros(1)
-                                bboxes[0,0] = int(detectPersonOfInterest['ymin'])/frame_size[0]
-                                bboxes[0,1] = int(detectPersonOfInterest['xmin'])/frame_size[1]
-                                bboxes[0,2] = int(detectPersonOfInterest['ymax'])/frame_size[0]
-                                bboxes[0,3] = int(detectPersonOfInterest['xmax'])/frame_size[1]
-                                scores[0] = np.array(float(detectPerson.iloc[0]['confidence']))
-                                classes[0] = np.array(0) # class person
-                                self.count += 1 
-                                
-                                if self.count > 10: 
-                                    self.initialisation = False
-                                    self.count = 0
-                                break           
+                        #print('left_shouldert',left_shoulder.x)
+                        #print('right_shoulder',right_shoulder.x)
+
+                        if (left_wrist.y > left_shoulder.y) and (right_wrist.y < right_shoulder.y) and (left_wrist.x < left_shoulder.x) and (left_wrist.x > right_shoulder.x) and (right_wrist.x < left_shoulder.x) and (right_wrist.x > right_shoulder.x) :
+                            detectPersonOfInterest = detectPerson.iloc[i,:] 
+                            print('detect')
+                            num_objects=1
+                            bboxes = np.zeros((1,4))
+                            scores = np.zeros(1)
+                            classes = np.zeros(1)
+                            bboxes[0,0] = int(detectPersonOfInterest['ymin'])/frame_size[0]
+                            bboxes[0,1] = int(detectPersonOfInterest['xmin'])/frame_size[1]
+                            bboxes[0,2] = int(detectPersonOfInterest['ymax'])/frame_size[0]
+                            bboxes[0,3] = int(detectPersonOfInterest['xmax'])/frame_size[1]
+                            scores[0] = np.array(float(detectPerson.iloc[0]['confidence']))
+                            classes[0] = np.array(0) # class person
+                            self.count += 1 
+                            
+                            if self.count > 10: 
+                                self.initialisation = False
+                                self.count = 0
+                            break           
 
             elif not detectPerson.empty:
         # convert data to numpy arrays and slice out unused elements
@@ -264,7 +254,7 @@ class Detector(object):
                     #print(IDofInterest)
 
                 if track.track_id == self.IDofInterest :
-
+                    self.count_redo_init = 0
                     pred_bboxes = [(bbox[0]+bbox[2])/(2),(bbox[1]+bbox[3])/(2)]  # check if it needs to be int() ,(bbox[2]-bbox[0]),(bbox[3]-bbox[1])
                     pred_y_label = [1.0]
                 # if enable info flag then print details about each track
@@ -272,17 +262,18 @@ class Detector(object):
                     print("Tracker ID: {}, Class: {},  BBox Coords (xmin, ymin, xmax, ymax): {}".format(str(track.track_id), class_name, (int(bbox[0]), int(bbox[1]), int(bbox[2]), int(bbox[3]))))
             #print('output bbox',pred_bboxes)
             #If the person of interest is lost, redo initialisation after 10 frames
-                if not self.initialisation and  pred_bboxes[0] == 80:
-                    self.count_redo_init += 1
-                if self.count_redo_init > 10:
-                    self.initialisation = True
-                    self.count_redo_init = 0
-                    print('Redo initialisation')
+            
+            if not self.initialisation and  pred_bboxes[0] == 80:
+                self.count_redo_init += 1
+            if self.count_redo_init > 15:
+                self.initialisation = True
+                self.count_redo_init = 0
+                print('Redo initialisation')
 
             #print('output',pred_y_label[0])
         return pred_bboxes, pred_y_label
 
-detector = Detector()
+"""detector = Detector()
 from PIL import Image
 
 # creating a object
@@ -319,3 +310,4 @@ while True:
 
 cap.release()
 cv2.destroyAllWindows()
+"""
